@@ -3,12 +3,16 @@ from wtforms import StringField , TextAreaField , PasswordField , Form , validat
 from flask_mysqldb import MySQL
 from functools import wraps
 from passlib.hash import sha256_crypt 
-
-from currency_converter import CurrencyConverter
-
+import json
+import feedparser
+from urllib.request import urlopen
+from urllib.request import quote
+import urllib3 
+from bs4 import BeautifulSoup
+import bs4
 app = Flask(__name__)
 
-
+CURRENCY_URL = "https://openexchangerates.org//api/latest.json?app_id=6a0f7b96a90f4ed98578d79648afd01a"
 #DataBase Connection MySQL Xampp
 
 app.config['MYSQL_HOST'] = 'localhost'
@@ -20,7 +24,6 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
 
-convert = CurrencyConverter()
 
 #is_required decorator
 def is_logged_in(f):
@@ -32,7 +35,6 @@ def is_logged_in(f):
       flash("Unauthorized Access! Please Login!" , 'danger')
       return redirect(url_for('login'))
   return wrap
-
 
 # ================================INDEX PAGE===================================
 
@@ -57,10 +59,43 @@ class CalculateZakat(Form):
 
 # ================================CALCULATE ZAKAT PAGE===================================
 
+
+def get_rate(frm, to):
+    all_currency = urlopen(CURRENCY_URL).read()
+    parsed = json.loads(all_currency).get('rates')
+    frm_rate = parsed.get(frm.upper())
+    to_rate = parsed.get(to.upper())
+    return (to_rate / frm_rate, parsed.keys())
+
+class CurrencyCoverter(Form):
+  amount = StringField('Enter Amount' ,[validators.length(min=2 , max=30)])
+  convert = StringField( [validators.DataRequired(), validators.length(min=2 , max=30)])
+
 @app.route('/calculate' ,methods = ['GET' , 'POST'])
 def calculate():
-  form = CalculateZakat(request.form)
+  currnecy_form = CurrencyCoverter(request.form)
+  if request.method == "POST" or request.method == "GET":
+    amount = currnecy_form.amount.data
+    convert = currnecy_form.convert.data
 
+     
+  DEFAULTS = {'publication': 'bbc',
+            'city': 'London,UK',
+            'currency_from': 'GBP',
+            'currency_to': 'USD'
+            }
+  form = CalculateZakat(request.form)
+  # ====================================================CURRENCY CONVERTER=======================================================
+  currency_from = request.args.get("currency_from")
+  if not currency_from:
+      currency_from = DEFAULTS['currency_from']
+  currency_to = request.args.get("currency_to")
+  if not currency_to:
+      currency_to = DEFAULTS['currency_to']
+  rate, currencies = get_rate(currency_from, currency_to)
+  return render_template("calculate.html",currency_from=currency_from, currency_to=currency_to, rate=rate, currencies=sorted(currencies) , form = form , currnecy_form = currnecy_form)
+  
+# ============================================================FORM=================================
   if request.method == "POST" and form.validate():
 
     gold = int(form.gold.data)
@@ -70,11 +105,11 @@ def calculate():
     liabilities =  int(form.liabilities.data)
 
     if (gold < 10000) and (silver < 10000) and (cash < 10000) and (properties < 10000) and (liabilities < 10000):
-      
       return render_template('not-eligible.html') 
     else:
       zakat = (gold + silver + cash + properties + liabilities)//2.5
-      return render_template('zakat.html' , zakat = zakat) 
+      return render_template('zakat.html' , zakat = zakat , currnecy_form = currnecy_form) 
+  
 
 
 

@@ -7,6 +7,40 @@
 <div class="jumbotron">
 
     <h1 class="text-center">Zakat Calculator</h1>
+    <h3>Currency</h3>
+    <div class="row">
+    <div class="col-sm-8">
+    <form>
+        
+        FROM: <select name="currency_from">
+                {% for currency in currencies %}
+                    <option value="{{currency}}" class="form-control option-box" {{'selected="selected"' if currency_from==currency}}>{{currency}}</option>
+                {% endfor %}
+              </select>
+        
+         TO: <select name="currency_to">
+                {% for currency in currencies %}
+                    <option value="{{currency}}" class="form-control option-box" {{'selected="selected"' if currency_to==currency}}>{{currency}}</option>
+                {% endfor %}
+              </select>
+           
+             <button style="margin-left:20px;" type="submit" class="btn btn-success btn-adjust">Submit</button>
+           
+    </form>
+    <h5> 
+        1 {{currency_from }} = {{currency_to}} {{rate | round(4)}} 
+      </h5>
+  </div>
+
+<div class="col-sm-4">
+<form class="form-inline" >
+   {{render_field(currnecy_form.amount , class_ = 'form-inline') }}
+
+  <button type="submit" class="btn btn-success btn-adjust">Submit</button>
+  </form>
+  currnecy_form.amount
+</div>
+</div>
     <hr>
     <div class="row">
             <div class="col-sm-8">
